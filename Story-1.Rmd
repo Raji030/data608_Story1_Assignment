@@ -1,0 +1,121 @@
+---
+title: "Story 1: Infrastructure Investment & Jobs Act Funding Allocation"
+author: "Mahmud Hasan Al Raji"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction:
+
+This assignment is about to finding story (Data Visualization(s)) that covering the following questions:
+Is the allocation equitable based on the population of each of the States and Territories, or is bias apparent?
+Does the allocation favor the political interests of the Biden administration?
+
+For the conducting the analyses, the data regarding the Infrastructure Investment and Jobs Act funding (IIJA Funding-2023) by State and Territory has been provided. Additionally, I have collected two more datasets. First One is the population data based on US Census-2020 results available on US Census Bureau official website (https://www.census.gov/) and the second one is the US Presidential Election-2020 result data from US Federal Election Commission official website (https://www.fec.gov/). All the datasets are collected in Excel file format. Important to note that, US Presidential Election-2020 data are not applicable for US territories and Tribal communities. Therefore, for conducting political interests or party bias analysis, these areas have been excluded.
+
+# Libraries:
+
+```{r message=FALSE}
+library(readxl)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+```
+
+## Part-1: Get and Prepare Data:
+
+# Get IIJA funding allocation data, population data, and presidential election-2020 result data 
+
+```{r}
+df <-  as.data.frame(read_excel("F:\\CUNY masters\\data608\\major assignment 01\\datasets\\IIJA FUNDING AS OF MARCH 2023.xlsx"))
+head(df)
+
+df1<-read_excel("F:\\CUNY masters\\data608\\major assignment 01\\datasets\\NST-EST2022-POP.xlsx")
+head(df1)
+
+df5<-read_excel("F:\\CUNY masters\\data608\\major assignment 01\\datasets\\federalelections-2020.xlsx")
+head(df5)
+```
+
+# Data preparation
+
+```{r}
+# Change column names
+colnames(df) <- c("State_Teritory_or_Tribal_Nation", "Total_Billions")
+
+# Correct misspell name in column
+df[9,"State_Teritory_or_Tribal_Nation"] <-"DELAWARE"
+
+# Lowering letter from uppercase to lowercase while keeping only first letter uppercase of word
+df$State_Teritory_or_Tribal_Nation <- str_to_title(tolower(df$State_Teritory_or_Tribal_Nation))
+
+# Remove unnecessary columns 2,3,4
+df2 <- select(df1, -2,-4,-5)
+
+# Remove unnecessary rows 1,2,3,4,5,6,7,8,66,65,64,63,62
+df3<-df2 <- slice(df2, -1,-2,-3,-4,-5,-6,-7,-8,-62,-63,-64,-65,-66)
+
+# Remove the dots and renumber rows
+df3[] <- lapply(df3, function(x) sub("^\\.", "", x))
+df3<-data.frame(df3)
+
+# Change column names
+colnames(df3) <- c("State_Teritory_or_Tribal_Nation", "Population")
+df3<-slice(df3,-52)
+
+# Add a teritory name and population in two columns. Data source US Census Bureau 2020  
+df3[53, c("State_Teritory_or_Tribal_Nation", "Population")] <- c("American Samoa", 49710)
+df3[54, c("State_Teritory_or_Tribal_Nation", "Population")] <- c("Northern Mariana Islands", 47329)
+df3[55, c("State_Teritory_or_Tribal_Nation", "Population")] <- c("Guam", 153836)
+df3[56, c("State_Teritory_or_Tribal_Nation", "Population")] <- c("US Virgin Islands", 87146)
+df3[57, c("State_Teritory_or_Tribal_Nation", "Population")] <- c("Tribal Communities", 3700000)
+
+# Convert the population column values to numeric
+df3$Population <- as.numeric(df3$Population)
+
+# Lowering letter from uppercase to lowercase while keeping only first letter uppercase of word
+df3$State_Teritory_or_Tribal_Nation <- str_to_title(tolower(df3$State_Teritory_or_Tribal_Nation))
+# order the values in alphabetically
+df3[] <- df3[order(df3$State_Teritory_or_Tribal_Nation ), ]
+
+# Join two data frames based on the "State_Teritory_or_Tribal_Nation" column 
+df4 <- inner_join(df, df3, by = "State_Teritory_or_Tribal_Nation")
+
+# Add Per Capita Funding column to df4 by dividing the allocated funding by the population
+df4 <- df4 %>% mutate(Per_Capita_Funding_Dollar = Total_Billions*1000000000 /Population)
+df6<-select(df5,c("State","Party"))
+
+df9<- df4 %>% rename(State = State_Teritory_or_Tribal_Nation)
+# Join df7 and df6 dataframe based on State column
+df8 <- inner_join(df9, df6, by = "State")
+```
+
+## Part-2: Data Visualization:
+
+# (1) Equitable Allocation Analysis:
+
+```{r}
+df4 %>% ggplot(aes(x= State_Teritory_or_Tribal_Nation, y= Per_Capita_Funding_Dollar)) + geom_bar(stat = "identity") + labs(title = "Unequitable Allocation of Per Capita Funding by State,Territory or Tribal Nation", x = "State,Territory or Tribal Nation",  y = "Per Capita Funding in Dollar") + geom_hline(yintercept = median(df4$Per_Capita_Funding_Dollar), color = "blue", linetype = "dashed") + theme(axis.text.x = element_text(angle = 90, hjust =1)) 
+```
+
+
+# (2) Political Bias or Interest Analysis:
+
+```{r}
+# Create the bar plot
+ggplot(df8, aes(x = State, y =Per_Capita_Funding_Dollar, fill = Party)) + geom_bar(stat = "identity") + labs(title = "Unbiased Per Capita Funding Allocation For States By Biden Administration", x = "State", y = "Per_Capita_Funding_Dollar") + scale_fill_manual(values = c("blue", "red")) + theme_minimal() + theme(axis.text.x = element_text(angle = 90, hjust =1))
+
+```
+
+# Conclusion: 
+
+From the two visualizations above, it is seen that the per capita funding allocation for US States, territories or Tribal Communities is not equitable. Republican led states seem getting more per capita funding allocation than democrat led states.Therefore, an unbiased per capita funding allocation for states under the Biden administration has been observed in this analysis.  
+
+
+
+
+
